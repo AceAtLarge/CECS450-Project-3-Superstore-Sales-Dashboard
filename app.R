@@ -500,16 +500,23 @@ server <- function(input, output, session){
     }
     
     # trend line across all data
-    fit  <- lm(profit ~ discount, data = df)
-    xseq <- seq(min(df$discount), max(df$discount), length.out = 80)
-    ypred <- predict(fit, newdata = data.frame(discount = xseq))
+    trend_df <- df %>%
+      filter(is.finite(discount), is.finite(profit))
+    
+    if (nrow(trend_df) >= 2 && dplyr::n_distinct(trend_df$discount) >= 2) {
+      fit  <- lm(profit ~ discount, data = trend_df)
+      xseq <- seq(min(trend_df$discount), max(trend_df$discount), length.out = 80)
+      ypred <- predict(fit, newdata = data.frame(discount = xseq))
+      
+      fig <- fig %>%
+        add_trace(x = xseq, y = ypred, type = "scatter", mode = "lines", 
+                  name = "Trend", 
+                  line = list(color = "#ffc85c", width = 2, dash = "dot"),
+                  hoverinfo = "skip", showlegend = TRUE
+                  )
+    }
     
     fig <- fig %>%
-      add_trace(x = xseq, y = ypred, type = "scatter", mode = "lines", 
-                name = "Trend", 
-                line = list(color = "#ffc85c", width = 2, dash = "dot"),
-                hoverinfo = "skip", showlegend = TRUE
-                ) %>%
       layout(xaxis= c(list(title = "Discount"), axis_style, 
                       list(tickformat = ".0%")), 
              yaxis = c(list(title = "Profit ($)"), axis_style,
