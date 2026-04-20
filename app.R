@@ -367,9 +367,70 @@ server <- function(input, output, session){
     titlefont = list(color = mut, size = 12)
   )
   
+  # reset filters
+  observeEvent(input$reset, {
+    updateSelectInput(session, "region", selected = "All")
+    updateSelectInput(session, "category", selected = "All")
+    updateSelectInput(session, "segment", selected = "All")
+    updateSelectInput(session, "ship_mode", selected = "All")
+    updateDateRangeInput(session, "date_range", 
+                         start = date_range[1], end = date_range[2])
+    updateSliderInput(session, "discount", value = c(0, round(disc_range[2], 2))
+                      )
+    })
   
+  # reactive filtered data
+  filtered <- reactive({
+    df <- superstore %>% filter(order_date >= input$date_range[1],
+                                order_date <= input$date_range[2],
+                                discount >= input$discount[1],
+                                discount <= input$discount[2])
+    
+    if(input$region != "ALL") df <- df %>% filter(region == input$region)
+    if(input$category != "ALL") df <- df %>% filter(category == input$category)
+    if(input$segment != "ALL") df <- df %>% filter(segment == input$segment)
+    if(input$ship_mode != "All") df <- df %>% filter(ship_mode == input$ship_mode)
+    
+    df
+  })
   
+  # KPIs
+  output$kpi_sales <- renderUI({dollar(sum(filtered()$sales, na.rm = TRUE))
+  })
+  output$kpi_profit <- renderUI({v <- sum(filtered()$profit, na.rm = TRUE)
+    col <- if (v >= 0) "#43d9ad" else "#ff6584"
+    tags$span(style = paste0("color:", col), dollar(v))
+    })
+  output$kpi_orders <- renderUI({
+    comma(nrow(filtered()))
+  })
+  output$kpi_discount <- renderUI({
+    percent(mean(filtered()$discount, na.rm = TRUE), accuracy = 0.1)
+  })
   
+  # Map
+  output$map_plot <- renderPlotly({
+    state_summary <- filtered() %>%
+      group_by(state_abbr, state) %>%
+      summarise(sales = sum(sales, na.rm = TRUE), .groups = "drop")
+    
+    plot_geo(state_summary, locationmode = "USA-states") %>%
+      add_trace(z = ~sales, locations = ~state_abbr, color = ~sales,
+                colorscale = list(c(0, "#1a1d27"), c(0.5, acc), c(1, suc)), 
+                text = ~paste0("<b>", state, "</b><br>Sales: ", dollar(sales)), 
+                hoverinfo = "text", 
+                marker = list(line = list(color = bord, width = 0.5))
+                ) %>%
+      colorbar(title = "Sales ($)", tickfont = list(color = mut)) %>%
+      layout(
+        geo = list(scope = "usa", bgcolor = surf, lakecolor = surf, 
+                   landcolor = surf, subunitcolor = bord, showlakes = TRUE
+                   ), 
+        paper_bgcolor = surf,
+        font = list(color = txt), 
+        margin = list(1 = 0, r = 0, t = 0, b = 0)
+      )
+  })
 }
   
 
