@@ -431,7 +431,144 @@ server <- function(input, output, session){
         margin = list(1 = 0, r = 0, t = 0, b = 0)
       )
   })
+  
+  # Category bar chart
+  output$category_plot <- renderPlotly({
+    cat_df <- filtered() %>%
+      group_by(category, sub_category) %>%
+      summarise(sales = sum(sales, na.rm = TRUE), .groups = "drop") %>%
+      arrange(desc(sales))
+    
+    pal <- c("#6c63ff", "#ff6584", "#43d9ad", "#ffc85c", "#a78bfa", "#f9a8d4", 
+             "#6ee7b7", "#fde68a", "#c4b5fd", "#fbcfe8", "#34d399")
+    
+    p <- ggplot(cat_df, aes(x = reorder(sub_category, sales), y = sales,
+                            fill = category, 
+                            text = paste0("<b>", sub_category, "</b><br>", 
+                                          "Category: ", category, "<br>",
+                                          "Sales: ", dollar(sales)))) + 
+      geom_col(width = 0.7) + coord_flip() + 
+      scale_fill_manual(values = pal) +
+      scale_y_continuous(labels = dollar_format()) +
+      labs(x = NULL, y = "Total Sales", fill = "Category") + 
+      theme(plot.background  = element_rect(fill = surf, color = NA),
+            panel.background = element_rect(fill = surf, color = NA),
+            panel.grid.major.x = element_line(color = bord, linewidth = 0.4),
+            panel.grid.major.y = element_blank(),
+            axis.text = element_text(color = mut, size = 9),
+            axis.title = element_text(color = mut, size = 10), 
+            legend.background = element_rect(fill = surf, color = NA),
+            legend.text = element_text(color = txt),
+            legend.title = element_text(color = mut)
+            )
+    
+    ggplotly(p, tooltip = "text") %>%
+      layout(paper_bgcolor = surf,  plot_bgcolor = surf, 
+             font = list(color = txt), 
+             legend = list(bgcolor = "transparent")
+             ) %>%
+      config(displayModeBar = FALSE)
+  })
+  
+  # scatter plot profit vs discount
+  output$scatter_plot <- renderPlotly({
+    df <- filtered() %>%
+      group_by(order_id, category) %>%
+      summarise(discount = mean(discount, na.rm = TRUE), 
+                profit = sum(profit, na.rm = TRUE),
+                sales = sum(sales, na.rm = TRUE),
+                .groups = "drop"
+                )
+    
+    pal <- c(acc, acc2, suc)
+    cats <- unique(df$category)
+    
+    fig <- plot_ly()
+    
+    for(i in seq_along(cats)){
+      sub <- df %>% filter(category == cats[i])
+      fig <- fig %>%
+        add_trace(data = sub, x = ~discount, y = ~profit, type = "scatter", 
+                  mode = "markers", name = cats[i], 
+                  marker = list(color = pal[i], size = 6, opacity = 0.65, 
+                                line = list(width = 0)),
+                  text = ~paste0("<b>Order:</b> ", order_id,
+                                 "<br>Discount: ", percent(discount, 0.1),
+                                 "<br>Profit: ",   dollar(profit)),
+                  hoverinfo = "text"
+                  )
+    }
+    
+    # trend line across all data
+    fit  <- lm(profit ~ discount, data = df)
+    xseq <- seq(min(df$discount), max(df$discount), length.out = 80)
+    ypred <- predict(fit, newdata = data.frame(discount = xseq))
+    
+    fig <- fig %>%
+      add_trace(x = xseq, y = ypred, type = "scatter", mode = "lines", 
+                name = "Trend", 
+                line = list(color = "#ffc85c", width = 2, dash = "dot"),
+                hoverinfo = "skip", showlegend = TRUE
+                ) %>%
+      layout(xaxis= c(list(title = "Discount"), axis_style, 
+                      list(tickformat = ".0%")), 
+             yaxis = c(list(title = "Profit ($)"), axis_style,
+                       list(tickprefix = "$", separatethousands = TRUE)), 
+             base_layout
+      ) %>%
+      config(displayModeBar = FALSE)
+    fig
+  })
+  
+  # monthly trend
+  output$trend_plot <- renderPlotly({
+    trend_df <- filtered() %>%
+      group_by(order_month) %>%
+      summarise(sales = sum(sales, na.rm = TRUE), .groups = "drop") %>%
+      arrange(order_month)
+    
+    plot_ly(trend_df, x = ~order_month, y = ~sales, type = "scatter", 
+            mode = "lines+markers", line = list(color = acc, width = 2.5), 
+            marker = list(color = acc, size = 6), 
+            fill = "tozeroy", fillcolor = "rgba(108,99,255,0.1)",
+            text = ~paste0("<b>", format(order_month, "%b %Y"), 
+                           "</b><br>Sales: ", dollar(sales)), 
+            hoverinfo = "text") %>%
+      layout(xaxis = c(list(title = "Month"), axis_style),
+             yaxis = c(list(title = "Sales ($)", 
+                            tickprefix = "$"), axis_style), base_layout
+             ) %>%
+      config(displayModeBar = FALSE)
+  })
+  # Top states table
+  output$states_table <- renderDT({
+    tbl <- filtered() %>%
+      group_by(State = state, Region = region) %>%
+      summarize(`Total Sales` = sum(sales, na.rm = TRUE), 
+                `Total Profit` = sum(profit, na.rm = TRUE),
+                `Avg. Discount`  = mean(discount, na.rm = TRUE),
+                Orders = n(), .groups = "drop"
+                ) %>%
+      arrange(desc(`Total Sales`)) %>%
+      mutate(`Total Sales` = dollar(`Total Sales`,accuracy = 1),
+             `Total Profit` = dollar(`Total Profit`, accuracy = 1),
+             `Avg. Discount` = percent(`Avg. Discount`, accuracy = 0.1)
+             )
+    
+    datatable(tbl, rownames = FALSE, 
+              options  = list(pageLength = 10, dom = "ftip", ordering = TRUE, 
+                              autoWidth = TRUE, scrollX = TRUE, 
+                              columnDefs = list(list(className = "dt-right", 
+                                                     targets = c(2, 3, 4, 5)))
+                              ), 
+              class = "display compact"
+              )
+  })
 }
+
+# Launch
+shinyApp(ui = ui, server = server)
+
   
 
 
