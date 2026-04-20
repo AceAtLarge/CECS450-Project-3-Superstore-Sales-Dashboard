@@ -377,16 +377,16 @@ server <- function(input, output, session){
     updateSelectInput(session, "ship_mode", selected = "All")
     updateDateRangeInput(session, "date_range", 
                          start = date_range[1], end = date_range[2])
-    updateSliderInput(session, "discount", value = c(0, round(disc_range[2], 2))
-    )
+    updateSliderInput(session, "discount",
+                      value = c(0, round(disc_range[2] * 100, 1)))
   })
   
   # reactive filtered data
   filtered <- reactive({
     df <- superstore %>% filter(order_date >= input$date_range[1],
                                 order_date <= input$date_range[2],
-                                discount >= input$discount[1],
-                                discount <= input$discount[2])
+                                discount >= input$discount[1] / 100,
+                                discount <= input$discount[2] / 100)
     
     if(input$region != "All") df <- df %>% filter(region == input$region)
     if(input$category != "All") df <- df %>% filter(category == input$category)
