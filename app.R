@@ -15,6 +15,7 @@ superstore_raw <- read_csv("superstore.csv", show_col_types = FALSE)
 #1a Convert date columns into the proper date format
 superstore <- superstore_raw %>%
   rename_with(~ gsub(" ", "_", .x)) %>%
+  rename_with(~ gsub("-", "_", .x)) %>%
   rename_with(tolower) %>%
   mutate(order_date = mdy(order_date), 
          ship_date  = mdy(ship_date), 
@@ -285,9 +286,9 @@ div(
       selectInput("ship_mode", NULL, choices  = c("All", all_shipmodes),
                   selected = "All"),
       div(class = "sidebar-section-title", "💲 Discount Range"),
-      sliderInput("discount", NULL, min   = 0, max = round(disc_range[2], 2),
-                  value = c(0, round(disc_range[2], 2)),
-                  step  = 0.01, post = "%", ticks = FALSE),
+      sliderInput("discount", NULL, min   = 0, max = round(disc_range[2] * 100, 1),
+                  value = c(0, round(disc_range[2] * 100, 1)),
+                  step  = 1, post = "%", ticks = FALSE),
       tags$button("↺ Reset Filters", class = "btn-reset",
                   onclick = "Shiny.setInputValue('reset', Math.random())")
   ),
@@ -437,6 +438,7 @@ server <- function(input, output, session){
   # Category bar chart
   output$category_plot <- renderPlotly({
     validate(need(nrow(filtered()) > 0, "No data matches the selected filters."))
+    
     cat_df <- filtered() %>%
       group_by(category, sub_category) %>%
       summarise(sales = sum(sales, na.rm = TRUE), .groups = "drop") %>%
