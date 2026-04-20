@@ -15,6 +15,7 @@ superstore_raw <- read_csv("superstore.csv", show_col_types = FALSE)
 #1a Convert date columns into the proper date format
 superstore <- superstore_raw %>%
   rename_with(~ gsub(" ", "_", .x)) %>%
+  rename_with(~ gsub("-", "_", .x)) %>%
   rename_with(tolower) %>%
   mutate(order_date = mdy(order_date), 
          ship_date  = mdy(ship_date), 
@@ -437,6 +438,7 @@ server <- function(input, output, session){
   # Category bar chart
   output$category_plot <- renderPlotly({
     validate(need(nrow(filtered()) > 0, "No data matches the selected filters."))
+    
     cat_df <- filtered() %>%
       group_by(category, sub_category) %>%
       summarise(sales = sum(sales, na.rm = TRUE), .groups = "drop") %>%
