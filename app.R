@@ -19,8 +19,9 @@ superstore <- superstore_raw %>%
   mutate(order_date = mdy(order_date), 
          ship_date  = mdy(ship_date), 
          order_month = floor_date(order_date, "month"), 
-         profit_margin = profit / sales)
-  
+         # (OLD) profit_margin = profit / sales)
+         profit_margin = ifelse(sales != 0, profit / sales, NA_real_))
+
 #1b create state abbreviations
 state_abb_df <- data.frame(state = state.name, 
                            state_abbr = state.abb, 
@@ -132,14 +133,14 @@ ui <- fluidPage(tags$head(tags$style(HTML(
         border-radius: 8px !important;
         font-size: 0.83rem !important;
       }
-      .dash-sidebar.selectize-input.focus { border-color: var(--accent) !important; }
-      .dash-sidebar.irs--shiny .irs-bar { background: var(--accent) !important; 
+      .dash-sidebar .selectize-input.focus { border-color: var(--accent) !important; }
+      .dash-sidebar .irs--shiny .irs-bar { background: var(--accent) !important; 
       border-color:var(--accent) !important; }
-      .dash-sidebar.irs--shiny .irs-handle { border-color: 
+      .dash-sidebar .irs--shiny .irs-handle { border-color: 
       var(--accent)!important; }
-      .dash-sidebar.irs--shiny .irs-from,
-      .dash-sidebar.irs--shiny .irs-to,
-      .dash-sidebar.irs--shiny .irs-single { background: var(--accent) !important; }
+      .dash-sidebar .irs--shiny .irs-from,
+      .dash-sidebar .irs--shiny .irs-to,
+      .dash-sidebar .irs--shiny .irs-single { background: var(--accent) !important; }
       .btn-reset {
         width: 100%;
         margin-top: 18px;
@@ -253,91 +254,91 @@ ui <- fluidPage(tags$head(tags$style(HTML(
         .kpi-row { grid-template-columns: repeat(2, 1fr); }
       }
   "))
-  ),
-  # Header
-  div(
-    class = "dash-header",
-    span("🛒"),
-    h1("Superstore Sales Dashboard"),
-    span(class = "badge-live", "Interactive")),
+),
+# Header
+div(
+  class = "dash-header",
+  span("🛒"),
+  h1("Superstore Sales Dashboard"),
+  span(class = "badge-live", "Interactive")),
+
+# Body
+div(
+  class = "dash-body",
   
-  # Body
-  div(
-    class = "dash-body",
-    
-    div(class = "dash-sidebar",
-        div(class = "sidebar-section-title", "📅 Date"),
-        dateRangeInput("date_range", NULL, start = date_range[1], 
-                       end = date_range[2], min = date_range[1],
-                       max = date_range[2], format = "mm/dd/yyyy"),
-        
-        div(class = "sidebar-section-title", "🌎 Region"), 
-        selectInput("region", NULL, choices = c("All", all_regions), 
-                    selected = "ALL"), 
-        div(class = "sidebar-section-title", "📦 Category"),
-        selectInput("category", NULL, choices  = c("All", all_categories),
-                    selected = "All"), 
-        div(class = "sidebar-section-title", "👤 Segment"),
-        selectInput("segment", NULL, choices  = c("All", all_segments), 
-                    selected = "All"),
-        div(class = "sidebar-section-title", "🚚 Ship Mode"),
-        selectInput("ship_mode", NULL, choices  = c("All", all_shipmodes),
-                    selected = "All"),
-        div(class = "sidebar-section-title", "💲 Discount Range"),
-        sliderInput("discount", NULL, min   = 0, max = round(disc_range[2], 2),
-                    value = c(0, round(disc_range[2], 2)),
-                    step  = 0.01, post = "%", ticks = FALSE),
-        tags$button("↺ Reset Filters", class = "btn-reset",
-                    onclick = "Shiny.setInputValue('reset', Math.random())")
-        ),
-    
-    # Main
-    div(
-      class = "dash-main", 
-      div(
-        class = "kpi-row",
-        kpi_card("kpi_sales", "Total Sales", "💰"),
-        kpi_card("kpi_profit", "Total Profit", "📈"),
-        kpi_card("kpi_orders",  "Orders", "📦"),
-        kpi_card("kpi_discount", "Avg. Discount", "💲")
-        ),
+  div(class = "dash-sidebar",
+      div(class = "sidebar-section-title", "📅 Date"),
+      dateRangeInput("date_range", NULL, start = date_range[1], 
+                     end = date_range[2], min = date_range[1],
+                     max = date_range[2], format = "mm/dd/yyyy"),
       
-      # Tabs
-      tabsetPanel(
-        id = "main_tabs",
-        tabPanel(
-          "🗺 Map",
-          div(class = "chart-card",
-              div(class = "chart-title", "Sales by State"),
-              plotlyOutput("map_plot", height = "440px"))
-          ), 
-        tabPanel(
-          "📊 Category",
-          div(class = "chart-card",
-              div(class = "chart-title", "Sales by Category & Sub-Category"),
-              plotlyOutput("category_plot", height = "440px"))
-          ), 
-        tabPanel(
-          "💹 Profit vs Discount",
-          div(class = "chart-card",
-              div(class = "chart-title", "Profit vs. Discount (with Trend)"),
-              plotlyOutput("scatter_plot", height = "440px"))
-          ),
-        tabPanel(
-          "📅 Monthly Trend",
-          div(class = "chart-card",
-              div(class = "chart-title", "Monthly Sales Trend"),
-              plotlyOutput("trend_plot", height = "440px"))
-          ),
-        tabPanel(
-          "📋 Top States",
-          div(class = "chart-card",
-              div(class = "chart-title", "State-Level Summary"),
-              DTOutput("states_table"))
-          )
-        )
+      div(class = "sidebar-section-title", "🌎 Region"), 
+      selectInput("region", NULL, choices = c("All", all_regions), 
+                  selected = "All"), 
+      div(class = "sidebar-section-title", "📦 Category"),
+      selectInput("category", NULL, choices  = c("All", all_categories),
+                  selected = "All"), 
+      div(class = "sidebar-section-title", "👤 Segment"),
+      selectInput("segment", NULL, choices  = c("All", all_segments), 
+                  selected = "All"),
+      div(class = "sidebar-section-title", "🚚 Ship Mode"),
+      selectInput("ship_mode", NULL, choices  = c("All", all_shipmodes),
+                  selected = "All"),
+      div(class = "sidebar-section-title", "💲 Discount Range"),
+      sliderInput("discount", NULL, min   = 0, max = round(disc_range[2], 2),
+                  value = c(0, round(disc_range[2], 2)),
+                  step  = 0.01, post = "%", ticks = FALSE),
+      tags$button("↺ Reset Filters", class = "btn-reset",
+                  onclick = "Shiny.setInputValue('reset', Math.random())")
+  ),
+  
+  # Main
+  div(
+    class = "dash-main", 
+    div(
+      class = "kpi-row",
+      kpi_card("kpi_sales", "Total Sales", "💰"),
+      kpi_card("kpi_profit", "Total Profit", "📈"),
+      kpi_card("kpi_orders",  "Orders", "📦"),
+      kpi_card("kpi_discount", "Avg. Discount", "💲")
+    ),
+    
+    # Tabs
+    tabsetPanel(
+      id = "main_tabs",
+      tabPanel(
+        "🗺 Map",
+        div(class = "chart-card",
+            div(class = "chart-title", "Sales by State"),
+            plotlyOutput("map_plot", height = "440px"))
+      ), 
+      tabPanel(
+        "📊 Category",
+        div(class = "chart-card",
+            div(class = "chart-title", "Sales by Category & Sub-Category"),
+            plotlyOutput("category_plot", height = "440px"))
+      ), 
+      tabPanel(
+        "💹 Profit vs Discount",
+        div(class = "chart-card",
+            div(class = "chart-title", "Profit vs. Discount (with Trend)"),
+            plotlyOutput("scatter_plot", height = "440px"))
+      ),
+      tabPanel(
+        "📅 Monthly Trend",
+        div(class = "chart-card",
+            div(class = "chart-title", "Monthly Sales Trend"),
+            plotlyOutput("trend_plot", height = "440px"))
+      ),
+      tabPanel(
+        "📋 Top States",
+        div(class = "chart-card",
+            div(class = "chart-title", "State-Level Summary"),
+            DTOutput("states_table"))
       )
+    )
   )
+)
 )
 
 # Server
@@ -360,7 +361,7 @@ server <- function(input, output, session){
     hoverlabel = list(bgcolor = "#242736", 
                       bordercolor = bord,
                       font = list(color = txt, size = 12))
-                    )
+  )
   axis_style <- list(
     gridcolor = bord, zerolinecolor = bord, 
     tickfont = list(color = mut, size = 11), 
@@ -376,8 +377,8 @@ server <- function(input, output, session){
     updateDateRangeInput(session, "date_range", 
                          start = date_range[1], end = date_range[2])
     updateSliderInput(session, "discount", value = c(0, round(disc_range[2], 2))
-                      )
-    })
+    )
+  })
   
   # reactive filtered data
   filtered <- reactive({
@@ -386,9 +387,9 @@ server <- function(input, output, session){
                                 discount >= input$discount[1],
                                 discount <= input$discount[2])
     
-    if(input$region != "ALL") df <- df %>% filter(region == input$region)
-    if(input$category != "ALL") df <- df %>% filter(category == input$category)
-    if(input$segment != "ALL") df <- df %>% filter(segment == input$segment)
+    if(input$region != "All") df <- df %>% filter(region == input$region)
+    if(input$category != "All") df <- df %>% filter(category == input$category)
+    if(input$segment != "All") df <- df %>% filter(segment == input$segment)
     if(input$ship_mode != "All") df <- df %>% filter(ship_mode == input$ship_mode)
     
     df
@@ -398,9 +399,9 @@ server <- function(input, output, session){
   output$kpi_sales <- renderUI({dollar(sum(filtered()$sales, na.rm = TRUE))
   })
   output$kpi_profit <- renderUI({v <- sum(filtered()$profit, na.rm = TRUE)
-    col <- if (v >= 0) "#43d9ad" else "#ff6584"
-    tags$span(style = paste0("color:", col), dollar(v))
-    })
+  col <- if (v >= 0) "#43d9ad" else "#ff6584"
+  tags$span(style = paste0("color:", col), dollar(v))
+  })
   output$kpi_orders <- renderUI({
     comma(nrow(filtered()))
   })
@@ -410,6 +411,7 @@ server <- function(input, output, session){
   
   # Map
   output$map_plot <- renderPlotly({
+    validate(need(nrow(filtered()) > 0, "No data matches the selected filters."))
     state_summary <- filtered() %>%
       group_by(state_abbr, state) %>%
       summarise(sales = sum(sales, na.rm = TRUE), .groups = "drop")
@@ -420,20 +422,21 @@ server <- function(input, output, session){
                 text = ~paste0("<b>", state, "</b><br>Sales: ", dollar(sales)), 
                 hoverinfo = "text", 
                 marker = list(line = list(color = bord, width = 0.5))
-                ) %>%
+      ) %>%
       colorbar(title = "Sales ($)", tickfont = list(color = mut)) %>%
       layout(
         geo = list(scope = "usa", bgcolor = surf, lakecolor = surf, 
                    landcolor = surf, subunitcolor = bord, showlakes = TRUE
-                   ), 
+        ), 
         paper_bgcolor = surf,
         font = list(color = txt), 
-        margin = list(1 = 0, r = 0, t = 0, b = 0)
+        margin = list(l = 0, r = 0, t = 0, b = 0)
       )
   })
   
   # Category bar chart
   output$category_plot <- renderPlotly({
+    validate(need(nrow(filtered()) > 0, "No data matches the selected filters."))
     cat_df <- filtered() %>%
       group_by(category, sub_category) %>%
       summarise(sales = sum(sales, na.rm = TRUE), .groups = "drop") %>%
@@ -460,25 +463,26 @@ server <- function(input, output, session){
             legend.background = element_rect(fill = surf, color = NA),
             legend.text = element_text(color = txt),
             legend.title = element_text(color = mut)
-            )
+      )
     
     ggplotly(p, tooltip = "text") %>%
       layout(paper_bgcolor = surf,  plot_bgcolor = surf, 
              font = list(color = txt), 
              legend = list(bgcolor = "transparent")
-             ) %>%
+      ) %>%
       config(displayModeBar = FALSE)
   })
   
   # scatter plot profit vs discount
   output$scatter_plot <- renderPlotly({
+    validate(need(nrow(filtered()) > 0, "No data matches the selected filters."))
     df <- filtered() %>%
       group_by(order_id, category) %>%
       summarise(discount = mean(discount, na.rm = TRUE), 
                 profit = sum(profit, na.rm = TRUE),
                 sales = sum(sales, na.rm = TRUE),
                 .groups = "drop"
-                )
+      )
     
     pal <- c(acc, acc2, suc)
     cats <- unique(df$category)
@@ -496,7 +500,7 @@ server <- function(input, output, session){
                                  "<br>Discount: ", percent(discount, 0.1),
                                  "<br>Profit: ",   dollar(profit)),
                   hoverinfo = "text"
-                  )
+        )
     }
     
     # trend line across all data
@@ -513,7 +517,7 @@ server <- function(input, output, session){
                   name = "Trend", 
                   line = list(color = "#ffc85c", width = 2, dash = "dot"),
                   hoverinfo = "skip", showlegend = TRUE
-                  )
+        )
     }
     
     fig <- fig %>%
@@ -529,6 +533,7 @@ server <- function(input, output, session){
   
   # monthly trend
   output$trend_plot <- renderPlotly({
+    validate(need(nrow(filtered()) > 0, "No data matches the selected filters."))
     trend_df <- filtered() %>%
       group_by(order_month) %>%
       summarise(sales = sum(sales, na.rm = TRUE), .groups = "drop") %>%
@@ -544,39 +549,47 @@ server <- function(input, output, session){
       layout(xaxis = c(list(title = "Month"), axis_style),
              yaxis = c(list(title = "Sales ($)", 
                             tickprefix = "$"), axis_style), base_layout
-             ) %>%
+      ) %>%
       config(displayModeBar = FALSE)
   })
   # Top states table
   output$states_table <- renderDT({
+    validate(need(nrow(filtered()) > 0, "No data matches the selected filters."))
     tbl <- filtered() %>%
       group_by(State = state, Region = region) %>%
       summarize(`Total Sales` = sum(sales, na.rm = TRUE), 
                 `Total Profit` = sum(profit, na.rm = TRUE),
                 `Avg. Discount`  = mean(discount, na.rm = TRUE),
                 Orders = n(), .groups = "drop"
-                ) %>%
+      ) %>%
       arrange(desc(`Total Sales`)) %>%
       mutate(`Total Sales` = dollar(`Total Sales`,accuracy = 1),
              `Total Profit` = dollar(`Total Profit`, accuracy = 1),
              `Avg. Discount` = percent(`Avg. Discount`, accuracy = 0.1)
-             )
+      )
     
     datatable(tbl, rownames = FALSE, 
               options  = list(pageLength = 10, dom = "ftip", ordering = TRUE, 
                               autoWidth = TRUE, scrollX = TRUE, 
                               columnDefs = list(list(className = "dt-right", 
                                                      targets = c(2, 3, 4, 5)))
-                              ), 
+              ), 
               class = "display compact"
-              )
+    )
   })
 }
 
 # Launch
 shinyApp(ui = ui, server = server)
 
-  
+
+
+
+
+
+
+
+
 
 
 
