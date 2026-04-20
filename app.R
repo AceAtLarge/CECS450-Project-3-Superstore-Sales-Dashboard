@@ -286,9 +286,9 @@ div(
       selectInput("ship_mode", NULL, choices  = c("All", all_shipmodes),
                   selected = "All"),
       div(class = "sidebar-section-title", "💲 Discount Range"),
-      sliderInput("discount", NULL, min   = 0, max = round(disc_range[2], 2),
-                  value = c(0, round(disc_range[2], 2)),
-                  step  = 0.01, post = "%", ticks = FALSE),
+      sliderInput("discount", NULL, min   = 0, max = round(disc_range[2] * 100, 1),
+                  value = c(0, round(disc_range[2] * 100, 1)),
+                  step  = 1, post = "%", ticks = FALSE),
       tags$button("↺ Reset Filters", class = "btn-reset",
                   onclick = "Shiny.setInputValue('reset', Math.random())")
   ),
